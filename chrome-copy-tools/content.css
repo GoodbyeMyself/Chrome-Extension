@@ -1,0 +1,8 @@
+/* Chrome Copy Tools - Content Styles (Silent Mode) */
+
+/* 静默模式：不添加任何视觉样式 */
+
+/* 保留基础样式重置，确保不影响页面 */
+.chrome-copy-tools-hidden {
+  display: none !important;
+}

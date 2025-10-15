@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chrome Copy Tools</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <!-- 头部 -->
+    <div class="header">
+      <div class="title">
+        <div class="logo">📋</div>
+        <h1>Copy Tools</h1>
+      </div>
+      <div class="toggle-container">
+        <label class="toggle">
+          <input type="checkbox" id="enableToggle" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <!-- 状态信息 -->
+    <div class="status-section">
+      <div class="status-item">
+        <span class="status-label">状态:</span>
+        <span class="status-value" id="statusText">已启用</span>
+      </div>
+      <div class="status-item">
+        <span class="status-label">复制记录:</span>
+        <span class="status-value" id="historyCount">0</span>
+      </div>
+    </div>
+
+    <!-- 使用说明 -->
+    <div class="instructions">
+      <h3>使用方法</h3>
+      <p>双击页面上的任意元素即可复制其文案到剪贴板</p>
+    </div>
+
+    <!-- 复制历史 -->
+    <div class="history-section">
+      <div class="section-header">
+        <h3>最近复制</h3>
+        <button id="clearHistory" class="clear-btn" title="清空历史">🗑️</button>
+      </div>
+      <div class="history-list" id="historyList">
+        <div class="empty-state">暂无复制记录</div>
+      </div>
+    </div>
+
+    <!-- 设置按钮 -->
+    <div class="footer">
+      <button id="settingsBtn" class="settings-btn">⚙️ 设置</button>
+    </div>
+  </div>
+
+  <!-- 设置面板 -->
+  <div class="settings-panel" id="settingsPanel" style="display: none;">
+    <div class="settings-header">
+      <h3>设置</h3>
+      <button id="closeSettings" class="close-btn">✕</button>
+    </div>
+    <div class="settings-content">
+      <div class="setting-item">
+        <label>
+          <input type="checkbox" id="showTooltipSetting">
+          显示复制提示
+        </label>
+      </div>
+      <div class="setting-item">
+        <label>
+          <input type="checkbox" id="soundEnabledSetting">
+          启用提示音
+        </label>
+      </div>
+      <div class="setting-item">
+        <label>
+          历史记录数量:
+          <select id="maxHistorySetting">
+            <option value="20">20</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+          </select>
+        </label>
+      </div>
+    </div>
+    <div class="settings-footer">
+      <button id="saveSettings" class="save-btn">保存</button>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
