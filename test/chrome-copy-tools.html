@@ -367,7 +367,21 @@
                 <li>支持复制被禁用的表单元素</li>
                 <li>复制过程完全静默,无视觉反馈</li>
                 <li>点击扩展图标可查看复制历史记录</li>
+                <li>点击下方"扫描禁用元素"按钮可识别页面上所有禁用元素的文本</li>
             </ul>
+        </div>
+
+        <!-- 禁用元素扫描功能 -->
+        <div class="test-section" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+            <h2 style="color: white; border-bottom-color: white;">🔍 禁用元素扫描功能</h2>
+            <p style="margin-bottom: 15px;">点击按钮扫描页面上所有被禁用的元素，并显示其文本内容。</p>
+            <button onclick="scanDisabledElements()" style="width: auto; padding: 12px 30px; font-size: 16px; background: white; color: #667eea; border: none; cursor: pointer; border-radius: 8px; font-weight: bold; transition: all 0.3s ease;">
+                🔍 扫描禁用元素
+            </button>
+            <div id="scanResults" style="margin-top: 20px; padding: 15px; background: rgba(255,255,255,0.1); border-radius: 8px; backdrop-filter: blur(10px); display: none;">
+                <h3 style="color: white; margin-bottom: 10px;">扫描结果：</h3>
+                <div id="scanResultsContent" style="max-height: 400px; overflow-y: auto;"></div>
+            </div>
         </div>
 
         <!-- 统计信息 -->
@@ -792,6 +806,106 @@
             setTimeout(() => {
                 toast.classList.remove('show');
             }, 2000);
+        }
+
+        // 扫描禁用元素功能
+        async function scanDisabledElements() {
+            try {
+                // 检查扩展是否加载
+                if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.sendMessage) {
+                    showToast('❌ 扩展未加载，请确保已安装Chrome Copy Tools扩展');
+                    return;
+                }
+
+                showToast('🔍 正在扫描禁用元素...');
+
+                // 向content script发送消息
+                const response = await chrome.runtime.sendMessage({
+                    action: 'scanDisabledElements'
+                });
+
+                // 如果直接调用content script的全局对象
+                if (window.chromeCopyTools && typeof window.chromeCopyTools.scanDisabledElements === 'function') {
+                    const result = window.chromeCopyTools.scanDisabledElements();
+                    displayScanResults(result);
+                } else {
+                    showToast('❌ 扩展功能未就绪，请刷新页面后重试');
+                }
+            } catch (error) {
+                // 如果发送消息失败，直接调用本地方法
+                if (window.chromeCopyTools && typeof window.chromeCopyTools.scanDisabledElements === 'function') {
+                    const result = window.chromeCopyTools.scanDisabledElements();
+                    displayScanResults(result);
+                } else {
+                    showToast('❌ 扫描失败: ' + error.message);
+                    console.error('扫描禁用元素失败:', error);
+                }
+            }
+        }
+
+        function displayScanResults(result) {
+            const resultsDiv = document.getElementById('scanResults');
+            const resultsContent = document.getElementById('scanResultsContent');
+
+            if (!result || !result.elements || result.elements.length === 0) {
+                resultsContent.innerHTML = `
+                    <div style="padding: 20px; text-align: center; color: white;">
+                        <p style="font-size: 18px;">✅ 未找到任何禁用元素</p>
+                    </div>
+                `;
+                resultsDiv.style.display = 'block';
+                showToast('✅ 扫描完成，未找到禁用元素');
+                return;
+            }
+
+            // 显示结果
+            let html = `
+                <div style="margin-bottom: 15px; padding: 10px; background: rgba(255,255,255,0.2); border-radius: 6px;">
+                    <strong style="font-size: 16px;">📊 统计信息:</strong><br>
+                    <span style="margin-left: 20px;">• 找到 ${result.total} 个禁用元素</span><br>
+                    <span style="margin-left: 20px;">• 页面URL: ${result.url}</span><br>
+                    <span style="margin-left: 20px;">• 扫描时间: ${new Date(result.timestamp).toLocaleString('zh-CN')}</span>
+                </div>
+            `;
+
+            // 显示每个禁用元素的详细信息
+            result.elements.forEach((element, index) => {
+                html += `
+                    <div style="margin-bottom: 10px; padding: 12px; background: rgba(255,255,255,0.15); border-radius: 6px; border-left: 3px solid ${element.isVisible ? '#28a745' : '#ffc107'};">
+                        <div style="margin-bottom: 5px;">
+                            <strong>元素 ${index + 1}:</strong>
+                            <span style="background: rgba(0,0,0,0.3); padding: 2px 8px; border-radius: 3px; margin-left: 5px;">&lt;${element.tagName}&gt;</span>
+                            ${element.isVisible ? '<span style="background: #28a745; padding: 2px 8px; border-radius: 3px; margin-left: 5px; font-size: 12px;">可见</span>' : '<span style="background: #ffc107; color: #000; padding: 2px 8px; border-radius: 3px; margin-left: 5px; font-size: 12px;">隐藏</span>'}
+                        </div>
+                        <div style="margin-left: 20px; font-size: 14px;">
+                            <div style="margin: 3px 0;"><strong>📝 文本内容:</strong> <span style="background: rgba(0,0,0,0.3); padding: 3px 8px; border-radius: 3px;">${escapeHtml(element.text)}</span></div>
+                            ${element.id ? `<div style="margin: 3px 0;"><strong>🆔 ID:</strong> ${element.id}</div>` : ''}
+                            ${element.name ? `<div style="margin: 3px 0;"><strong>🏷️ Name:</strong> ${element.name}</div>` : ''}
+                            ${element.type ? `<div style="margin: 3px 0;"><strong>🔤 Type:</strong> ${element.type}</div>` : ''}
+                            ${element.placeholder ? `<div style="margin: 3px 0;"><strong>💬 Placeholder:</strong> ${escapeHtml(element.placeholder)}</div>` : ''}
+                            ${element.value ? `<div style="margin: 3px 0;"><strong>💾 Value:</strong> ${escapeHtml(element.value)}</div>` : ''}
+                            ${element.title ? `<div style="margin: 3px 0;"><strong>ℹ️ Title:</strong> ${escapeHtml(element.title)}</div>` : ''}
+                            ${element.ariaLabel ? `<div style="margin: 3px 0;"><strong>♿ Aria-label:</strong> ${escapeHtml(element.ariaLabel)}</div>` : ''}
+                            <div style="margin: 3px 0;"><strong>🚫 禁用原因:</strong> ${element.disabledBy}</div>
+                            <div style="margin: 3px 0;"><strong>📍 位置:</strong> (${element.position.left}, ${element.position.top}) | 尺寸: ${element.position.width}×${element.position.height}px</div>
+                            <div style="margin: 3px 0; font-size: 12px; opacity: 0.8;"><strong>🗺️ XPath:</strong> ${escapeHtml(element.xpath)}</div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            resultsContent.innerHTML = html;
+            resultsDiv.style.display = 'block';
+            showToast(`✅ 扫描完成！找到 ${result.total} 个禁用元素`);
+
+            // 滚动到结果区域
+            resultsDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
 
         // 防止表单提交

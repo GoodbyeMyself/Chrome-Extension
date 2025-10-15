@@ -24,32 +24,44 @@
             </div>
         </div>
 
-        <!-- 状态信息 -->
-        <div class="status-section">
-            <div class="status-item">
-                <span class="status-label">状态:</span>
-                <span class="status-value" id="statusText">已启用</span>
-            </div>
-            <div class="status-item">
-                <span class="status-label">复制记录:</span>
-                <span class="status-value" id="historyCount">0</span>
-            </div>
-        </div>
-
         <!-- 使用说明 -->
         <div class="instructions">
             <h3>使用方法</h3>
             <p>双击页面上的任意元素即可复制其文案到剪贴板</p>
         </div>
 
-        <!-- 复制历史 -->
-        <div class="history-section">
-            <div class="section-header">
-                <h3>最近复制</h3>
-                <button id="clearHistory" class="clear-btn" title="清空历史">🗑️</button>
+        <!-- Tab 切换区域 -->
+        <div class="tabs-container">
+            <!-- Tab 导航 -->
+            <div class="tabs-nav">
+                <button class="tab-btn tab-active" data-tab="history">
+                    📋 最近复制
+                </button>
+                <button class="tab-btn" data-tab="scan">
+                    🔍 扫描禁用
+                </button>
             </div>
-            <div class="history-list" id="historyList">
-                <div class="empty-state">暂无复制记录</div>
+
+            <!-- Tab 内容 -->
+            <div class="tabs-content">
+                <!-- 复制历史 Tab -->
+                <div class="tab-pane tab-pane-active" data-pane="history">
+                    <div class="section-header">
+                        <h3>最近复制</h3>
+                        <button id="clearHistory" class="clear-btn" title="清空历史">🗑️</button>
+                    </div>
+                    <div class="history-list" id="historyList">
+                        <div class="empty-state">暂无复制记录</div>
+                    </div>
+                </div>
+
+                <!-- 禁用元素扫描 Tab -->
+                <div class="tab-pane" data-pane="scan">
+                    <div class="scan-controls">
+                        <button id="scanBtn" class="scan-btn">🔍 开始扫描</button>
+                    </div>
+                    <div id="scanResults" class="scan-results scan-results-hidden"></div>
+                </div>
             </div>
         </div>
 
@@ -60,7 +72,7 @@
     </div>
 
     <!-- 设置面板 -->
-    <div class="settings-panel" id="settingsPanel" style="display: none;">
+    <div class="settings-panel settings-panel-hidden" id="settingsPanel">
         <div class="settings-header">
             <h3>设置</h3>
             <button id="closeSettings" class="close-btn">✕</button>

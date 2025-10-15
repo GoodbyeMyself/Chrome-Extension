@@ -12,14 +12,8 @@ class ChromeCopyTools {
         // 从存储中获取启用状态
         await this.loadSettings();
 
-        // 监听双击事件 - 使用捕获阶段确保能捕获到被禁用元素的事件
+        // 监听 dblclick
         document.addEventListener('dblclick', this.handleDoubleClick.bind(this), true);
-
-        // 为被禁用的元素添加额外的事件监听
-        document.addEventListener('mousedown', this.handleMouseDown.bind(this), true);
-
-        // 添加视觉反馈样式
-        this.addStyles();
 
         // 监听来自popup的消息
         chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -29,7 +23,11 @@ class ChromeCopyTools {
                 sendResponse({ success: true });
             } else if (request.action === 'getStatus') {
                 sendResponse({ enabled: this.isEnabled });
+            } else if (request.action === 'scanDisabledElements') {
+                const result = this.scanDisabledElements();
+                sendResponse({ success: true, data: result });
             }
+            return true; // 保持消息通道开放以支持异步响应
         });
     }
 
@@ -56,41 +54,6 @@ class ChromeCopyTools {
             await chrome.storage.local.set({ settings });
         } catch (error) {
             // Silent fail
-        }
-    }
-
-    handleMouseDown(event) {
-        // 只处理被禁用的元素
-        const element = event.target;
-        const isDisabled = element.disabled ||
-            element.getAttribute('disabled') !== null ||
-            element.hasAttribute('disabled') ||
-            (element.closest && element.closest('[disabled]'));
-
-        if (!isDisabled) {
-            return; // 非禁用元素由正常的双击事件处理
-        }
-
-        // 检测双击逻辑
-        const now = Date.now();
-        const timeSinceLastClick = now - (this.lastClickTime || 0);
-
-        // 如果是同一个元素且在双击时间窗口内（通常是500ms）
-        if (this.lastClickedElement === element && timeSinceLastClick < 500) {
-            // 模拟双击事件
-            this.handleDoubleClick({
-                target: element,
-                preventDefault: () => { },
-                stopPropagation: () => { }
-            });
-
-            // 重置点击状态
-            this.lastClickedElement = null;
-            this.lastClickTime = null;
-        } else {
-            // 记录这次点击
-            this.lastClickedElement = element;
-            this.lastClickTime = now;
         }
     }
 
@@ -258,17 +221,170 @@ class ChromeCopyTools {
         }
     }
 
-    // 静默复制 - 移除所有视觉反馈
-    showCopyFeedback(element) {
-        // 静默模式：不显示任何视觉反馈
+    /**
+     * 扫描页面上所有被禁用的表单元素并提取其文本内容
+     * 只扫描 input, select, textarea 三种表单元素
+     * @returns {Object} 包含所有禁用元素信息的对象
+     */
+    scanDisabledElements() {
+        const disabledElements = [];
+        
+        // 只检查表单相关的元素：input, select, textarea
+        const selectors = [
+            'input[disabled]',
+            'textarea[disabled]',
+            'select[disabled]',
+            // 也包含 ARIA 禁用的表单元素
+            'input[aria-disabled="true"]',
+            'textarea[aria-disabled="true"]',
+            'select[aria-disabled="true"]'
+        ];
+
+        // 使用 Set 来避免重复元素
+        const uniqueElements = new Set();
+
+        // 查找所有匹配的元素
+        selectors.forEach(selector => {
+            try {
+                const elements = document.querySelectorAll(selector);
+                elements.forEach(element => uniqueElements.add(element));
+            } catch (e) {
+                // 忽略无效选择器
+            }
+        });
+
+        // 遍历所有唯一的禁用元素
+        uniqueElements.forEach((element, index) => {
+            const elementInfo = this.extractDisabledElementInfo(element, index);
+            if (elementInfo) {
+                disabledElements.push(elementInfo);
+            }
+        });
+
+        return {
+            total: disabledElements.length,
+            elements: disabledElements,
+            timestamp: Date.now(),
+            url: window.location.href
+        };
     }
 
-    showErrorFeedback(element) {
-        // 静默模式：不显示任何错误反馈
+    /**
+     * 提取禁用元素的详细信息
+     * @param {HTMLElement} element - 要提取信息的元素
+     * @param {number} index - 元素在列表中的索引
+     * @returns {Object|null} 元素信息对象，如果没有有效文本则返回 null
+     */
+    extractDisabledElementInfo(element, index) {
+        const text = this.extractText(element);
+        
+        // 只返回包含文本的元素
+        if (!text) {
+            return null;
+        }
+
+        // 计算元素的 XPath（用于定位）
+        const xpath = this.getElementXPath(element);
+
+        // 获取元素的位置信息
+        const rect = element.getBoundingClientRect();
+
+        return {
+            index: index,
+            tagName: element.tagName.toLowerCase(),
+            text: text,
+            id: element.id || null,
+            className: element.className || null,
+            name: element.name || null,
+            type: element.type || null,
+            placeholder: element.placeholder || null,
+            value: element.value || null,
+            title: element.title || null,
+            ariaLabel: element.getAttribute('aria-label') || null,
+            xpath: xpath,
+            position: {
+                top: Math.round(rect.top),
+                left: Math.round(rect.left),
+                width: Math.round(rect.width),
+                height: Math.round(rect.height)
+            },
+            isVisible: this.isElementVisible(element),
+            disabledBy: this.getDisabledReason(element)
+        };
     }
 
-    addStyles() {
-        // 静默模式：不添加任何样式
+    /**
+     * 获取元素的 XPath
+     * @param {HTMLElement} element - 要获取 XPath 的元素
+     * @returns {string} 元素的 XPath
+     */
+    getElementXPath(element) {
+        if (element.id) {
+            return `//*[@id="${element.id}"]`;
+        }
+
+        const parts = [];
+        while (element && element.nodeType === Node.ELEMENT_NODE) {
+            let index = 0;
+            let sibling = element.previousSibling;
+
+            while (sibling) {
+                if (sibling.nodeType === Node.ELEMENT_NODE && sibling.nodeName === element.nodeName) {
+                    index++;
+                }
+                sibling = sibling.previousSibling;
+            }
+
+            const tagName = element.nodeName.toLowerCase();
+            const pathIndex = index > 0 ? `[${index + 1}]` : '';
+            parts.unshift(`${tagName}${pathIndex}`);
+
+            element = element.parentNode;
+        }
+
+        return parts.length ? `/${parts.join('/')}` : '';
+    }
+
+    /**
+     * 检查元素是否可见
+     * @param {HTMLElement} element - 要检查的元素
+     * @returns {boolean} 元素是否可见
+     */
+    isElementVisible(element) {
+        if (!element) return false;
+
+        const style = window.getComputedStyle(element);
+        
+        return style.display !== 'none' &&
+               style.visibility !== 'hidden' &&
+               style.opacity !== '0' &&
+               element.offsetWidth > 0 &&
+               element.offsetHeight > 0;
+    }
+
+    /**
+     * 获取元素被禁用的原因
+     * @param {HTMLElement} element - 要检查的元素
+     * @returns {string} 禁用原因
+     */
+    getDisabledReason(element) {
+        if (element.hasAttribute('disabled')) {
+            return 'disabled attribute';
+        }
+        if (element.getAttribute('aria-disabled') === 'true') {
+            return 'aria-disabled';
+        }
+        
+        // 检查是否被父级 fieldset 禁用
+        let parent = element.parentElement;
+        while (parent) {
+            if (parent.tagName === 'FIELDSET' && parent.hasAttribute('disabled')) {
+                return 'disabled by parent fieldset';
+            }
+            parent = parent.parentElement;
+        }
+
+        return 'unknown';
     }
 }
 
