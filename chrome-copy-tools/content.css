@@ -4,5 +4,5 @@
 
 /* 保留基础样式重置，确保不影响页面 */
 .chrome-copy-tools-hidden {
-  display: none !important;
+    display: none !important;
 }
