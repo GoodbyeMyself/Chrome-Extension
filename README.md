@@ -78,13 +78,6 @@ Chrome-Extension/
 - 选择"检查弹出内容"
 - 在打开的开发者工具中调试
 
-## 🔧 开发工具推荐
-
-- **代码编辑器**: [Visual Studio Code](https://code.visualstudio.com/)
-  - 推荐插件: ESLint, Prettier, Chrome Extension Tools
-- **调试工具**: Chrome DevTools
-- **图标制作**: [Figma](https://figma.com/), [Canva](https://canva.com/)
-- **版本控制**: Git + GitHub
 
 ## 📖 学习资源
 
@@ -135,25 +128,11 @@ Chrome-Extension/
 - 不能使用内联脚本
 - Background Pages 改用 Service Worker
 
-### 权限原则
-- 遵循最小权限原则
-- 仅申请必要的权限
-- 在 README 中说明权限用途
-
 ### 代码规范
 - 使用清晰的变量和函数命名
 - 添加必要的注释
 - 处理可能的错误情况
 - 提供良好的用户反馈
-
-## 📝 许可证
-
-本项目采用 MIT 许可证 - 详见各插件的 LICENSE 文件
-
-## 📮 联系方式
-
-- 问题反馈: [GitHub Issues](../../issues)
-- 功能建议: [GitHub Discussions](../../discussions)
 
 ## 🌟 Star History
 
@@ -161,5 +140,4 @@ Chrome-Extension/
 
 ---
 
-**最后更新**: 2024-10  
 **维护状态**: ✅ 积极维护中
